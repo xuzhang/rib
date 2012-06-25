@@ -105,6 +105,8 @@ var BCommonProperties = {
  *                     a required property name (see #3 above).  Existance of
  *                     this object implies the textContent node of the
  *                     resulting DOM element is editable in-line
+ *  16) showInProperty: boolean, whether widget is shown in property view (
+ *                      default: true)
  *
  * Each zone description in the array should be an object with:
  *   1) name identifying the zone point
@@ -194,6 +196,7 @@ var BWidgetRegistry = {
         parent: "Base",
         allowIn: [],
         showInPalette: false,
+        showInProperty: false,
         selectable: false,
         moveable: false,
         properties: {
@@ -427,6 +430,7 @@ var BWidgetRegistry = {
         parent: "Base",
         allowIn: "Page",
         showInPalette: false,
+        showInProperty: false,
         selectable: false,
         moveable: false,
         template: '<div data-role="content"></div>',
@@ -1043,6 +1047,7 @@ var BWidgetRegistry = {
         parent: "Base",
         allowIn: "SelectMenu",
         showInPalette: false,
+        showInProperty: false,
         selectable: false,
         moveable: false,
         properties: {
@@ -1580,6 +1585,7 @@ var BWidgetRegistry = {
     Block: {
         parent: "Base",
         showInPalette: false,
+        showInProperty: false,
         selectable: false,
         outlineLabel: function (node) {
             var columns, row, col, children, map;
@@ -1910,6 +1916,21 @@ var BWidget = {
     isPaletteWidget: function (widgetType) {
         var widget = BWidgetRegistry[widgetType];
         if (typeof widget === "object" && widget.showInPalette !== false) {
+            return true;
+        }
+        return false;
+    },
+
+    /**
+     * Tests whether this widget type should be shown in the property view
+     *
+     * @param {String} widgetType The type of the widget.
+     * @return {Boolean} true if this widget is to be shown in the property view,
+     *                   false if not or it is undefined.
+     */
+    isShownInProperty: function (widgetType) {
+        var widget = BWidgetRegistry[widgetType];
+        if (typeof widget === "object" && widget.showInProperty !== false) {
             return true;
         }
         return false;
