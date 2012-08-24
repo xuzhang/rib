@@ -1051,29 +1051,77 @@ $(function () {
      * @param {Function} callback when upload file successfully
      */
     pmUtils.uploadTheme = function (themeFile, handler) {
-        var themeNames = [], themeName;
+        var themeNames = [], themeName, type, reader;
 
-        //write themeFile to sandbox
-        $.rib.fsUtils.write('/themes/' + themeFile.name, themeFile, function () {
-            //read file to buffer
-            $.rib.fsUtils.read('/themes/' + themeFile.name, function (buffer) {
-                var swatches, result;
-                try {
-                    // split suffix of 'css'
-                    themeName = themeFile.name.replace(/.css$/g, "");
-                    // split suffix of 'min' if exists
-                    themeName = themeName.replace(/.min$/g, "");
-                    result = updateThemeList(themeName, buffer);
-		    if (result) {
-		        themeNames.push(themeName);
-		    }
-                    handler();
-                } catch(e) {
-                    alert(e.stack);
-                }
-            });
-        });
-    };
+        type = getFileType(themeFile.name);
+        switch (type) {
+	    case 'css':
+                // write themeFile to sandbox
+		$.rib.fsUtils.write('/themes/' + themeFile.name, themeFile, function () {
+	            // read file to buffer
+		    $.rib.fsUtils.read('/themes/' + themeFile.name, function (buffer) {
+			var swatches, result;
+			try {
+			    // split suffix of 'css'
+			    themeName = themeFile.name.replace(/.css$/g, "");
+			    // split suffix of 'min' if exists
+			    themeName = themeName.replace(/.min$/g, "");
+			    result = updateThemeList(themeName, buffer);
+			    if (result) {
+			        themeNames.push(themeName);
+			    }
+			    handler();
+			} catch(e) {
+			    alert(e.stack);
+		        }
+		    });
+		});
+                break;
+            case 'zip':
+                reader = new FileReader();
+                reader.onloadend = function (e) {
+                    var zip, data, cssRule, cssData, copyFiles = [];
+                    // get result data from reader
+                    data = e.target.result;
+                    cssRule = /\.(css)$/i;
+                    try {
+                        zip = new ZipFile(data);
+                    } catch (e) {
+                        console.warn("Failed to parse imported file as zip.");
+                    }
+                    if (zip && zip.filelist) {
+                        zip.filelist.forEach(function (zipInfo, idx, array) {
+                            if (cssRule.test(zipInfo.filename)) {
+                                cssData = zip.extract(zipInfo.filename);
+                                // write themeFile to sandbox
+                                $.rib.fsUtils.write('/' + zipInfo.filename, cssData, function () {
+                                    //read file to buffer
+                                    $.rib.fsUtils.read('/' + zipInfo.filename, function (result) {
+                                        var themeName, result;
+                                        // split suffix of 'css'
+                                        themeName = themeFile.name.replace(/.css$/g, "");
+                                        // split suffix of 'min' if exists
+                                        themeName = themeName.replace(/.min$/g, "");
+                                        result = updateThemeList(themeName, result);
+                                        if (result) {
+                                            themeNames.push(themeName);
+                                        }
+                                        return themeNames;
+                                    });
+                                });
+                        }
+                    });
+                    }
+                };
+                reader.onError = function () {
+                    console.error("Read imported file error.");
+                };
+                reader.readAsBinaryString(themeFile);
+                break;
+            default:
+                console.warn("unsupported file type, please upload css or zip file");
+                return;
+        };
 
     /**
      * get all themes in projects
@@ -1119,6 +1167,23 @@ $(function () {
             alert(e.stack);
             return false;
         }
+    }
+
+    /* get file type. Currently we get file type just accordint to suffix of file name
+     *
+     * param {String} fileName  name of file
+     * return {String} the file type if suffix can be recognized. Otherwise "unsuppurted"
+     *                 is returned.
+     */
+    function getFileType (fileName) {
+        // currently we only check whether type of file is css or zip
+	var type,re = /(?:.*)+\.(zip|css)$/i;
+	type = re.exec(file.name);
+	if (type) {
+		return type[1].toLowerCase();
+	} else {
+		return "unsupported";
+	}
     }
 
     /************ export pmUtils to $.rib **************/
